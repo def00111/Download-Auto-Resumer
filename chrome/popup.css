@@ -1,0 +1,35 @@
+body {
+  width: max-content;
+}
+
+label, input, span#saveHint {
+  vertical-align: middle;
+}
+
+.hidden {
+  display: none;
+}
+
+#optionsForm div:not(:last-child, .hline) {
+  user-select: none;
+  -webkit-user-select: none; /* Safari */
+  margin-bottom: 4px;
+}
+
+#saveHint {
+  font-size: 14px;
+  color: green;
+}
+
+.hline {
+  border: 1px solid #C4C4C4;
+  margin: 3px 0;
+}
+
+#time {
+  width: 35px;
+}
+
+#debug {
+  margin-left: 0;
+}
