@@ -67,10 +67,12 @@ chrome.downloads.onCreated.addListener(async dl => {
 chrome.downloads.onErased.addListener(async () => {
   if (!(await hasDownloads())) {
     toggle(false);
+  } else {
+    await setTitleAndBadge(true); // update title and badge
   }
 });
 
-function canResume(dl) {
+function canResumeDownload(dl) {
   if (dl.state != "interrupted") {
     return false;
   }
@@ -84,7 +86,10 @@ function canResume(dl) {
 }
 
 async function startDownloads() {
-  for (let dl of await getDownloads()) {
+  if (!navigator.onLine) {
+    return;
+  }
+  for (let dl of await getResumableDownloads()) {
     handleInterruptedDownload(dl.id);
   }
 }
@@ -93,19 +98,22 @@ function searchDownloads() {
   let lastDayDate = new Date(Date.now() - 24 * 36e5); // limit downloads to the last 24 hours
   return chrome.downloads.search({
     orderBy: ['-startTime'],
-    limit: 100,
     startedAfter: lastDayDate.toISOString()
   });
 }
 
 function checkDownload(dl) {
   return (
-    dl.state == "in_progress" && !dl.paused || canResume(dl)
+    dl.state == "in_progress" && !dl.paused || canResumeDownload(dl)
   );
 }
 
 function getDownloads() {
   return searchDownloads().then(dls => dls.filter(checkDownload));
+}
+
+function getResumableDownloads() {
+  return searchDownloads().then(dls => dls.filter(canResumeDownload));
 }
 
 function hasDownloads() {
@@ -116,6 +124,8 @@ chrome.downloads.onChanged.addListener(async delta => {
   if (delta.state?.current == "interrupted") {
     if (!(await hasDownloads())) {
       toggle(false);
+    } else {
+      await setTitleAndBadge(true); // update title and badge
     }
     if (delta.error &&
         continueInterruptReasons.has(delta.error.current)) {
@@ -139,6 +149,8 @@ chrome.downloads.onChanged.addListener(async delta => {
   } else if (delta.state?.current == "complete") {
     if (!(await hasDownloads())) {
       toggle(false);
+    } else {
+      await setTitleAndBadge(true); // update title and badge
     }
   } else if ((delta.canResume?.current == true) &&
              downloads.has(delta.id)) {
@@ -177,7 +189,7 @@ async function handleInterruptedDownload(downloadId) {
 
 async function resumeDownload(downloadId) {
   let [dl] = await chrome.downloads.search({id: downloadId});
-  if (dl && canResume(dl)) {
+  if (dl && canResumeDownload(dl)) {
     chrome.downloads.resume(downloadId).then(async () => {
       debug("Resumed download %i", downloadId);
       downloads.add(downloadId);
@@ -202,7 +214,9 @@ async function init() {
   const dls = await getDownloads();
   if (dls.length) {
     for (let dl of dls) {
-      handleInterruptedDownload(dl.id);
+      if (canResumeDownload(dl)) {
+        handleInterruptedDownload(dl.id);
+      }
     }
     toggle(true);
   }
@@ -225,19 +239,19 @@ async function setTitleAndBadge(enabled) {
     setTitle
   } = chrome.action;
   const {
-    action: a,
-    name: n
+    action: { default_title: defaultTitle },
+    name
   } = chrome.runtime.getManifest();
   const promises = [];
   if (enabled) {
     const dls = await getDownloads();
     promises.push(
-      setTitle({title: `${n} (${dls.length})`}),
+      setTitle({title: `${name} (${dls.length})`}),
       setBadge({text: String(dls.length)})
     );
   } else {
     promises.push(
-      setTitle({title: a.default_title}),
+      setTitle({title: defaultTitle}),
       setBadge({text: ""})
     );
   }
@@ -272,17 +286,19 @@ async function setupOffscreenDocument(path) {
     return;
   }
 
-  if (creating) {
-    await creating;
-  } else {
-    creating = chrome.offscreen.createDocument({
-      url: path,
-      reasons: ['WORKERS'],
-      justification: 'watch for online/offline events',
-    });
-    await creating;
-    creating = null;
-  }
+  try {
+    if (creating) {
+      await creating;
+    } else {
+      creating = chrome.offscreen.createDocument({
+        url: path,
+        reasons: ['WORKERS'],
+        justification: 'watch for online/offline events',
+      });
+      await creating;
+      creating = null;
+    }
+  } catch (ex) {}
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

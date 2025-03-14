@@ -26,10 +26,15 @@ label, input, span#saveHint {
   margin: 3px 0;
 }
 
-#time {
+input[type="number"] {
   width: 35px;
 }
 
 #debug {
   margin-left: 0;
+}
+
+legend {
+  font-weight: bold;
+  text-align: center;
 }
