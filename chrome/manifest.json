@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Download Auto Resumer",
-  "version": "1.2",
+  "version": "1.4",
   "description": "Automatically resume interrupted downloads",
   "icons": {
     "16": "icons/on-16.png",
@@ -25,8 +25,7 @@
       "48": "icons/off-48.png",
       "64": "icons/off-64.png"
     },
-    "default_popup": "popup.html",
-    "default_title": "Download Auto Resumer (off)"
+    "default_popup": "popup.html"
   },
   "background": {
     "service_worker": "background.js"
