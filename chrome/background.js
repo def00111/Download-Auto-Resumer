@@ -238,20 +238,20 @@ async function setTitleAndBadge(enabled) {
     setBadgeText: setBadge,
     setTitle
   } = chrome.action;
-  const {
-    action: { default_title: defaultTitle },
-    name
-  } = chrome.runtime.getManifest();
   const promises = [];
   if (enabled) {
     const dls = await getDownloads();
+    let title = `Watching ${dls.length} Download`;
+    if (dls.length > 1) {
+      title += "s";
+    }
     promises.push(
-      setTitle({title: `${name} (${dls.length})`}),
+      setTitle({title}),
       setBadge({text: String(dls.length)})
     );
   } else {
     promises.push(
-      setTitle({title: defaultTitle}),
+      setTitle({title: ""}),
       setBadge({text: ""})
     );
   }
