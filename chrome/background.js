@@ -58,9 +58,7 @@ chrome.downloads.onCreated.addListener(async dl => {
   if (!(await isEnabled())) {
     toggle(true);
   } else {
-    let enabled = await hasDownloads();
-    await setTitleAndBadge(enabled); // update title and badge
-    await setIcon(enabled); // update icon
+    await setTitleAndBadge(await hasDownloads()); // update title and badge
   }
 });
 
@@ -142,9 +140,7 @@ chrome.downloads.onChanged.addListener(async delta => {
     if (!(await isEnabled())) {
       toggle(true);
     } else {
-      let enabled = await hasDownloads();
-      await setTitleAndBadge(enabled); // update title and badge
-      await setIcon(enabled); // update icon
+      await setTitleAndBadge(await hasDownloads()); // update title and badge
     }
   } else if (delta.state?.current == "complete") {
     if (!(await hasDownloads())) {
@@ -222,17 +218,6 @@ async function init() {
   }
 }
 
-function setIcon(enabled) {
-  return chrome.action.setIcon({
-    path: {
-      "16": `icons/${enabled ? "on" : "off"}-16.png`,
-      "32": `icons/${enabled ? "on" : "off"}-32.png`,
-      "48": `icons/${enabled ? "on" : "off"}-48.png`,
-      "64": `icons/${enabled ? "on" : "off"}-64.png`
-    }
-  });
-}
-
 async function setTitleAndBadge(enabled) {
   const {
     setBadgeText: setBadge,
@@ -268,7 +253,6 @@ async function toggle(enabled) {
   }
 
   await setTitleAndBadge(enabled);
-  await setIcon(enabled);
   await chrome.storage.session.set({enabled});
 }
 
