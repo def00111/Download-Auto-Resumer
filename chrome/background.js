@@ -4,7 +4,6 @@ const continueInterruptReasons = new Set([
   "NETWORK_FAILED",
   "NETWORK_TIMEOUT",
   "NETWORK_SERVER_DOWN",
-  "NETWORK_DISCONNECTED",
   "SERVER_CONTENT_LENGTH_MISMATCH",
   "SERVER_UNREACHABLE",
 ]);
@@ -77,7 +76,8 @@ function canResumeDownload(dl) {
   if (!dl.error) {
     return false;
   }
-  if (!continueInterruptReasons.has(dl.error)) {
+  if (!continueInterruptReasons.has(dl.error) ||
+      dl.error != "NETWORK_DISCONNECTED") {
     return false;
   }
   return true;
@@ -191,7 +191,6 @@ async function resumeDownload(downloadId) {
       downloads.add(downloadId);
     }).catch((error) => {
       console.error("Failed to resume download %i: %s", downloadId, error.message);
-      handleInterruptedDownload(downloadId);
     });
   }
 }
