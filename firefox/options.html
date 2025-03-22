@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Download Auto Resumer options</title>
+  <link rel="stylesheet" href="options.css" type="text/css">
+  <script defer src="options.js"></script>
+</head>
+
+<body>
+  <form id="optionsForm">
+    <div>
+      <label for="maxRetries">Max retries:</label>
+      <input type="number" id="maxRetries" min="1" max="10">
+    </div>
+    <div>
+      <label for="retryInterval">Retry interval:</label>
+      <input type="number" id="retryInterval" min="5" max="90">
+      <label for="retryInterval">seconds</label>
+    </div>
+    <div>
+      <input type="checkbox" id="notifyWhenFailed">
+      <label for="notifyWhenFailed">Notify when a download failed to resume after x attempts.</label>
+    </div>
+    <div>
+      <input id="saveButton" type="submit" value="Save" disabled>
+      <span class="hidden" id="saveHint">&#10004;</span>
+    </div>
+  </form>
+</body>
+
+</html>

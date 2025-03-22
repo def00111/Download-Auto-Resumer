@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Download Auto Resumer",
+  "version": "1.2",
+  "description": "Automatically resume interrupted downloads",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "64": "icons/icon-64.png",
+    "96": "icons/icon-96.png",
+    "128": "icons/icon-128.png"
+  },
+  "permissions": [
+    "downloads",
+    "notifications",
+    "alarms",
+    "storage"
+  ],
+  "background": {
+    "scripts": [
+      "background.js"
+    ]
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": false
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "{1bfb3206-38cb-4955-91b5-1a78b89ff297}",
+      "strict_min_version": "136.0"
+    }
+  }
+}
