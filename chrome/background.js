@@ -92,18 +92,19 @@ async function startDownloads() {
   }
 }
 
-function searchDownloads() {
+async function searchDownloads() {
   let lastDayDate = new Date(Date.now() - 24 * 36e5); // limit downloads to the last 24 hours
+  let { startedAfter } = await chrome.storage.session.get({
+    startedAfter: lastDayDate.toISOString()
+  });
   return chrome.downloads.search({
     orderBy: ['-startTime'],
-    startedAfter: lastDayDate.toISOString()
+    startedAfter
   });
 }
 
 function checkDownload(dl) {
-  return (
-    dl.state == "in_progress" && !dl.paused || canResumeDownload(dl)
-  );
+  return dl.state == "in_progress" || canResumeDownload(dl);
 }
 
 function getDownloads() {
@@ -154,9 +155,6 @@ chrome.downloads.onChanged.addListener(async delta => {
       debug("Resumed download after it was paused %i", delta.id);
       downloads.delete(delta.id);
     });
-  } else if (delta.paused &&
-             !downloads.has(delta.id)) {
-    toggle(await hasDownloads());
   }
 });
 
@@ -186,10 +184,10 @@ async function handleInterruptedDownload(downloadId) {
 async function resumeDownload(downloadId) {
   let [dl] = await chrome.downloads.search({id: downloadId});
   if (dl && canResumeDownload(dl)) {
-    chrome.downloads.resume(downloadId).then(async () => {
+    chrome.downloads.resume(downloadId).then(() => {
       debug("Resumed download %i", downloadId);
       downloads.add(downloadId);
-    }).catch((error) => {
+    }).catch(error => {
       console.error("Failed to resume download %i: %s", downloadId, error.message);
     });
   }
@@ -206,14 +204,22 @@ async function init() {
     initialized: true
   });
 
-  const dls = await getDownloads();
+  let dls = await chrome.downloads.search({
+    orderBy: ['startTime'],
+    limit: 0
+  });
+  dls = dls.filter(checkDownload);
   if (dls.length) {
-    for (let dl of dls) {
-      if (canResumeDownload(dl)) {
-        handleInterruptedDownload(dl.id);
-      }
-    }
+    await chrome.storage.session.set({
+      startedAfter: new Date(Date.parse(dls[0].startTime) - 1).toISOString()
+    });
     toggle(true);
+  }
+
+  for (const dl of dls) {
+    if (canResumeDownload(dl)) {
+      handleInterruptedDownload(dl.id);
+    }
   }
 }
 
