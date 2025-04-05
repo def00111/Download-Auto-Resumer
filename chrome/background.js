@@ -1,18 +1,14 @@
 "use strict";
 
-const continueInterruptReasons = new Set([
-  "NETWORK_FAILED",
-  "NETWORK_TIMEOUT",
-  "NETWORK_SERVER_DOWN",
-  "SERVER_CONTENT_LENGTH_MISMATCH",
-  "SERVER_UNREACHABLE",
-]);
-
 const downloads = new Set();
+
+let retryCounts;
 
 const prefs = {
   debug: false,
-  time: 30 /* seconds */
+  time: 30 /* seconds */,
+  maxRetries: 10,
+  notifyWhenFailed: false
 };
 
 Object.defineProperty(this, "initOptions", {
@@ -41,9 +37,31 @@ function isEnabled() {
   }).then(res => res.enabled);
 }
 
-chrome.alarms.onAlarm.addListener(async alarm => {
+async function clearRetries(downloadId) {
+  if (retryCounts === undefined) {
+    retryCounts = await getRetryCounts();
+  }
+  if (retryCounts.has(downloadId)) {
+    retryCounts.delete(downloadId);
+    await setRetryCounts();
+  }
+}
+
+function getRetryCounts() {
+  return chrome.storage.session.get({
+    retryCounts: []
+  }).then(res => new Map(res.retryCounts));
+}
+
+function setRetryCounts() {
+  return chrome.storage.session.set({
+    retryCounts: Array.from(retryCounts)
+  });
+}
+
+chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name.startsWith("dar-alarm-")) {
-    let downloadId = parseInt(alarm.name.substr(10), 10);
+    const downloadId = parseInt(alarm.name.substr(10), 10);
     if (navigator.onLine) {
       resumeDownload(downloadId);
     }
@@ -55,79 +73,99 @@ chrome.downloads.onCreated.addListener(async dl => {
     return;
   }
   if (!(await isEnabled())) {
-    toggle(true);
-  } else {
-    await setTitleAndBadge(await hasDownloads()); // update title and badge
+    await toggle(true);
+    toggleKeepAwake(true);
   }
+  const dls = await searchDownloads();
+  await setTitleAndBadge(getInProgressCount(dls)); // update title and badge
+
+  if (retryCounts === undefined) {
+    retryCounts = await getRetryCounts();
+  }
+  retryCounts.set(dl.id, 0);
+  await setRetryCounts();
 });
 
-chrome.downloads.onErased.addListener(async () => {
-  if (!(await hasDownloads())) {
-    toggle(false);
-  } else {
-    await setTitleAndBadge(true); // update title and badge
+chrome.downloads.onErased.addListener(async downloadId => {
+  const dls = await searchDownloads();
+  if (!hasDownloads(dls)) {
+    await toggle(false);
   }
+  const inProgessCount = getInProgressCount(dls);
+  if (!inProgessCount) {
+    toggleKeepAwake(false);
+  }
+  await setTitleAndBadge(inProgessCount); // update title and badge
+  await clearRetries(downloadId);
 });
 
 function canResumeDownload(dl) {
   if (dl.state != "interrupted") {
     return false;
   }
-  if (!dl.error) {
-    return false;
-  }
-  if (!continueInterruptReasons.has(dl.error) ||
-      dl.error != "NETWORK_DISCONNECTED") {
-    return false;
-  }
-  return true;
+  return dl.canResume;
 }
 
 async function startDownloads() {
   if (!navigator.onLine) {
     return;
   }
-  for (let dl of await getResumableDownloads()) {
-    handleInterruptedDownload(dl.id);
+  const dls = await searchDownloads();
+  for (let i = 0, l = dls.length; i < l; i++) {
+    if (canResumeDownload(dls[i])) {
+      resumeDownload(dls[i].id);
+    }
   }
 }
 
 async function searchDownloads() {
-  let lastDayDate = new Date(Date.now() - 24 * 36e5); // limit downloads to the last 24 hours
-  let { startedAfter } = await chrome.storage.session.get({
+  const lastDayDate = new Date(Date.now() - 24 * 36e5); // limit downloads to the last 24 hours
+  const res = await chrome.storage.session.get({
     startedAfter: lastDayDate.toISOString()
   });
-  return chrome.downloads.search({
-    orderBy: ['-startTime'],
-    startedAfter
-  });
+
+  const query = Object.assign({
+    orderBy: ["-startTime"]
+  }, res);
+
+  return chrome.downloads.search(query);
 }
 
 function checkDownload(dl) {
   return dl.state == "in_progress" || canResumeDownload(dl);
 }
 
-function getDownloads() {
-  return searchDownloads().then(dls => dls.filter(checkDownload));
+function getInProgressCount(dls) {
+  let inProgessCount = 0;
+  for (let i = 0, l = dls.length; i < l; i++) {
+    if (dls[i].state == "in_progress") {
+      inProgessCount++;
+    }
+  }
+  return inProgessCount;
 }
 
-function getResumableDownloads() {
-  return searchDownloads().then(dls => dls.filter(canResumeDownload));
-}
-
-function hasDownloads() {
-  return searchDownloads().then(dls => dls.some(checkDownload));
+function hasDownloads(dls) {
+  for (let i = 0, l = dls.length; i < l; i++) {
+    if (checkDownload(dls[i])) {
+      return true;
+    }
+  }
+  return false;
 }
 
 chrome.downloads.onChanged.addListener(async delta => {
   if (delta.state?.current == "interrupted") {
-    if (!(await hasDownloads())) {
-      toggle(false);
-    } else {
-      await setTitleAndBadge(true); // update title and badge
+    const dls = await searchDownloads();
+    if (!hasDownloads(dls)) {
+      await toggle(false);
     }
-    if (delta.error &&
-        continueInterruptReasons.has(delta.error.current)) {
+    const inProgessCount = getInProgressCount(dls);
+    if (!inProgessCount) {
+      toggleKeepAwake(false);
+    }
+    await setTitleAndBadge(inProgessCount); // update title and badge
+    if (delta.canResume?.current == true) {
       handleInterruptedDownload(delta.id);
     }
   } else if (delta.state?.current == "in_progress") {
@@ -139,16 +177,22 @@ chrome.downloads.onChanged.addListener(async delta => {
       });
     }
     if (!(await isEnabled())) {
-      toggle(true);
-    } else {
-      await setTitleAndBadge(await hasDownloads()); // update title and badge
-    }
+      await toggle(true);
+      toggleKeepAwake(true);
+    } 
+    const dls = await searchDownloads();
+    await setTitleAndBadge(getInProgressCount(dls)); // update title and badge
   } else if (delta.state?.current == "complete") {
-    if (!(await hasDownloads())) {
-      toggle(false);
-    } else {
-      await setTitleAndBadge(true); // update title and badge
+    const dls = await searchDownloads();
+    if (!hasDownloads(dls)) {
+      await toggle(false);
     }
+    const inProgessCount = getInProgressCount(dls);
+    if (!inProgessCount) {
+      toggleKeepAwake(false);
+    }
+    await setTitleAndBadge(inProgessCount); // update title and badge
+    await clearRetries(delta.id);
   } else if ((delta.canResume?.current == true) &&
              downloads.has(delta.id)) {
     chrome.downloads.resume(delta.id).then(() => {
@@ -164,9 +208,22 @@ chrome.storage.sync.onChanged.addListener(async changes => {
   for (const item of changedItems) {
     prefs[item] = changes[item].newValue;
   }
-  if (changedItems.includes("time") &&
-      await chrome.alarms.clearAll()) {
-    startDownloads();
+
+  let changed = false;
+  for (const item of changedItems) {
+    switch (item) {
+      case "maxRetries":
+        await chrome.storage.session.remove("retryCounts");
+      case "time":
+        changed ||= true;
+        break;
+    }
+  }
+  if (changed) {
+    const wasCleared = await chrome.alarms.clearAll();
+    if (wasCleared) {
+      await startDownloads();
+    }
   }
 });
 
@@ -176,9 +233,35 @@ async function handleInterruptedDownload(downloadId) {
   }
 
   await initOptions();
-  chrome.alarms.create(`dar-alarm-${downloadId}`, {
-    delayInMinutes: prefs.time / 60
-  });
+  if (!prefs.maxRetries) {
+    await chrome.alarms.create(`dar-alarm-${downloadId}`, {
+      delayInMinutes: prefs.time / 60
+    });
+  } else {
+    if (retryCounts === undefined) {
+      retryCounts = await getRetryCounts();
+    }
+    if (!retryCounts.has(downloadId)) {
+      retryCounts.set(downloadId, 0);
+    }
+    let retryCount = retryCounts.get(downloadId);
+    if (retryCount < prefs.maxRetries) {
+      await chrome.alarms.create(`dar-alarm-${downloadId}`, {
+        delayInMinutes: prefs.time / 60
+      });
+    } else if ((retryCount == prefs.maxRetries) &&
+                prefs.notifyWhenFailed) {
+      await notifyUser(`dar-notification-${downloadId}`, {
+        message: `Failed to resume download after ${prefs.maxRetries} attempts.`,
+        title: "Download failed",
+        buttons: [{title: "Resume Download"}]
+      });
+    }
+    if (retryCount <= prefs.maxRetries) {
+      retryCounts.set(downloadId, retryCount++);
+    }
+    await setRetryCounts();
+  }
 }
 
 async function resumeDownload(downloadId) {
@@ -193,6 +276,24 @@ async function resumeDownload(downloadId) {
   }
 }
 
+function notifyUser(notificationId, options) {
+  Object.assign(options, {
+    type: "basic",
+    iconUrl: chrome.runtime.getURL("icons/icon-48.png")
+  });
+  return chrome.notifications.create(notificationId, options);
+}
+
+chrome.notifications.onButtonClicked.addListener(async (notificationId, btnIdx) => {
+  if (notificationId.startsWith("dar-notification-")) {
+    const downloadId = parseInt(notificationId.substr(17), 10);
+    await clearRetries(downloadId);
+    resumeDownload(downloadId);
+  } else if (notificationId == "dar-notification" && btnIdx == 0) {
+    await startDownloads();
+  }
+});
+
 async function init() {
   const res = await chrome.storage.session.get({
     initialized: false
@@ -205,39 +306,53 @@ async function init() {
   });
 
   let dls = await chrome.downloads.search({
-    orderBy: ['startTime'],
+    orderBy: ["-startTime"],
     limit: 0
   });
   dls = dls.filter(checkDownload);
   if (dls.length) {
+    const lastDownload = dls[dls.length - 1];
+    const startTime = Date.parse(lastDownload.startTime) - 1;
     await chrome.storage.session.set({
-      startedAfter: new Date(Date.parse(dls[0].startTime) - 1).toISOString()
+      startedAfter: new Date(startTime).toISOString()
     });
-    toggle(true);
-  }
-
-  for (const dl of dls) {
-    if (canResumeDownload(dl)) {
-      handleInterruptedDownload(dl.id);
+    await toggle(true);
+    const inProgessDls = dls.filter(dl => dl.state == "in_progress");
+    if (inProgessDls.length) {
+      await setTitleAndBadge(inProgessDls.length);
+      toggleKeepAwake(true);
+    }
+    const otherDls = dls.filter(canResumeDownload);
+    if (otherDls.length) {
+      let message = `Do you want to resume ${otherDls.length} failed Download`;
+      if (otherDls.length > 1) {
+        message += "s";
+      }
+      message += "?";
+      await notifyUser("dar-notification", {
+        requireInteraction: true,
+        message,
+        title: "Resume Downloads",
+        buttons: [{title: "Yes"}, {title: "No"}]
+      });
     }
   }
 }
 
-async function setTitleAndBadge(enabled) {
+async function setTitleAndBadge(count) {
   const {
     setBadgeText: setBadge,
     setTitle
   } = chrome.action;
   const promises = [];
-  if (enabled) {
-    const dls = await getDownloads();
-    let title = `Watching ${dls.length} Download`;
-    if (dls.length > 1) {
+  if (count) {
+    let title = `Watching ${count} Download`;
+    if (count > 1) {
       title += "s";
     }
     promises.push(
       setTitle({title}),
-      setBadge({text: String(dls.length)})
+      setBadge({text: String(count)})
     );
   } else {
     promises.push(
@@ -250,15 +365,19 @@ async function setTitleAndBadge(enabled) {
 
 async function toggle(enabled) {
   if (enabled) {
-    chrome.power.requestKeepAwake("system");
     await setupOffscreenDocument("offscreen.html");
   } else {
-    chrome.power.releaseKeepAwake();
     await chrome.offscreen.closeDocument().catch(() => {});
   }
-
-  await setTitleAndBadge(enabled);
   await chrome.storage.session.set({enabled});
+}
+
+async function toggleKeepAwake(enabled) {
+  if (enabled) {
+    chrome.power.requestKeepAwake("system");
+  } else {
+    chrome.power.releaseKeepAwake();
+  }
 }
 
 let creating;

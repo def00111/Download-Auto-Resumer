@@ -13,11 +13,17 @@ function onError(error) {
 
 chrome.storage.sync.get({
   debug: false,
-  time: 30 /* seconds */
+  time: 30 /* seconds */,
+  maxRetries: 10,
+  notifyWhenFailed: false
 }).then(prefs => {
   if (prefs.debug) {
     $("debug").checked = true;
   }
+  if (prefs.notifyWhenFailed) {
+    $("notifyWhenFailed").checked = true;
+  }
+  $("maxRetries").valueAsNumber = prefs.maxRetries;
   $("time").valueAsNumber = prefs.time;
   $("saveButton").disabled = false;
 }).catch(onError);
@@ -33,7 +39,9 @@ $("optionsForm").addEventListener("submit", evt => {
   const saveHint = $("saveHint");
   chrome.storage.sync.set({
     debug: $("debug").checked,
-    time: $("time").valueAsNumber
+    time: $("time").valueAsNumber,
+    maxRetries: $("maxRetries").valueAsNumber,
+    notifyWhenFailed: $("notifyWhenFailed").checked
   })
   .then(() => {
     saveHint.classList.remove("hidden");
