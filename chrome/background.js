@@ -78,12 +78,6 @@ chrome.downloads.onCreated.addListener(async dl => {
   }
   const dls = await searchDownloads();
   await setTitleAndBadge(getInProgressCount(dls)); // update title and badge
-
-  if (retryCounts === undefined) {
-    retryCounts = await getRetryCounts();
-  }
-  retryCounts.set(dl.id, 0);
-  await setRetryCounts();
 });
 
 chrome.downloads.onErased.addListener(async downloadId => {
@@ -167,6 +161,8 @@ chrome.downloads.onChanged.addListener(async delta => {
     await setTitleAndBadge(inProgessCount); // update title and badge
     if (delta.canResume?.current == true) {
       handleInterruptedDownload(delta.id);
+    } else {
+      await clearRetries(delta.id);
     }
   } else if (delta.state?.current == "in_progress") {
     if (downloads.has(delta.id)) {
@@ -241,10 +237,7 @@ async function handleInterruptedDownload(downloadId) {
     if (retryCounts === undefined) {
       retryCounts = await getRetryCounts();
     }
-    if (!retryCounts.has(downloadId)) {
-      retryCounts.set(downloadId, 0);
-    }
-    let retryCount = retryCounts.get(downloadId);
+    let retryCount = retryCounts.get(downloadId) ?? 0;
     if (retryCount < prefs.maxRetries) {
       await chrome.alarms.create(`dar-alarm-${downloadId}`, {
         delayInMinutes: prefs.time / 60
@@ -339,7 +332,7 @@ async function init() {
   }
 }
 
-async function setTitleAndBadge(count) {
+function setTitleAndBadge(count) {
   const {
     setBadgeText: setBadge,
     setTitle
