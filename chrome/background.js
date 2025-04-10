@@ -105,7 +105,7 @@ async function startDownloads() {
     return;
   }
   const dls = await searchDownloads();
-  for (let i = 0, l = dls.length; i < l; i++) {
+  for (let i = dls.length - 1; i >= 0; i--) {
     if (canResumeDownload(dls[i])) {
       resumeDownload(dls[i].id);
     }
@@ -131,7 +131,7 @@ function checkDownload(dl) {
 
 function getInProgressCount(dls) {
   let inProgessCount = 0;
-  for (let i = 0, l = dls.length; i < l; i++) {
+  for (let i = dls.length - 1; i >= 0; i--) {
     if (dls[i].state == "in_progress") {
       inProgessCount++;
     }
@@ -140,7 +140,7 @@ function getInProgressCount(dls) {
 }
 
 function hasDownloads(dls) {
-  for (let i = 0, l = dls.length; i < l; i++) {
+  for (let i = dls.length - 1; i >= 0; i--) {
     if (checkDownload(dls[i])) {
       return true;
     }
@@ -252,8 +252,8 @@ async function handleInterruptedDownload(downloadId) {
     }
     if (retryCount <= prefs.maxRetries) {
       retryCounts.set(downloadId, retryCount++);
+      await setRetryCounts();
     }
-    await setRetryCounts();
   }
 }
 
@@ -357,15 +357,11 @@ function setTitleAndBadge(count) {
 }
 
 async function toggle(enabled) {
-  if (enabled) {
-    await setupOffscreenDocument("offscreen.html");
-  } else {
-    await chrome.offscreen.closeDocument().catch(() => {});
-  }
-  await chrome.storage.session.set({enabled});
+  await toggleOffscreenDocument(enabled);
+  return chrome.storage.session.set({enabled});
 }
 
-async function toggleKeepAwake(enabled) {
+function toggleKeepAwake(enabled) {
   if (enabled) {
     chrome.power.requestKeepAwake("system");
   } else {
@@ -374,32 +370,38 @@ async function toggleKeepAwake(enabled) {
 }
 
 let creating;
-async function setupOffscreenDocument(path) {
+async function toggleOffscreenDocument(enabled) {
   // Check all windows controlled by the service worker to see if one 
   // of them is the offscreen document with the given path
-  const offscreenUrl = chrome.runtime.getURL(path);
-  const existingContexts = await chrome.runtime.getContexts({
+  const offscreenUrl = chrome.runtime.getURL('offscreen.html');
+  const [existingContext] = await chrome.runtime.getContexts({
     contextTypes: ['OFFSCREEN_DOCUMENT'],
     documentUrls: [offscreenUrl]
   });
 
-  if (existingContexts.length) {
+  if (existingContext) {
+    if (!enabled) {
+      await chrome.offscreen.closeDocument();
+    }
     return;
   }
 
-  try {
-    if (creating) {
-      await creating;
-    } else {
-      creating = chrome.offscreen.createDocument({
-        url: path,
-        reasons: ['WORKERS'],
-        justification: 'watch for online/offline events',
-      });
-      await creating;
-      creating = null;
-    }
-  } catch (ex) {}
+  if (enabled) {
+    try {
+      if (creating) {
+        await creating;
+      } else {
+        // Workaround for bug: https://issues.chromium.org/issues/40155587
+        creating = chrome.offscreen.createDocument({
+          url: offscreenUrl,
+          reasons: ['WORKERS'],
+          justification: 'Watch for online/offline events',
+        });
+        await creating;
+        creating = null;
+      }
+    } catch (ex) {}
+  }
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
