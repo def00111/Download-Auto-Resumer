@@ -245,9 +245,11 @@ async function handleInterruptedDownload(downloadId) {
     } else if ((retryCount == prefs.maxRetries) &&
                 prefs.notifyWhenFailed) {
       await notifyUser(`dar-notification-${downloadId}`, {
-        message: `Failed to resume download after ${prefs.maxRetries} attempts.`,
-        title: "Download failed",
-        buttons: [{title: "Resume Download"}]
+        message: chrome.i18n.getMessage("download_failed", [prefs.maxRetries]),
+        title: chrome.i18n.getMessage("download_failed_title"),
+        buttons: [{
+          title: chrome.i18n.getMessage("resume_download_title")
+        }]
       });
     }
     if (retryCount <= prefs.maxRetries) {
@@ -282,7 +284,7 @@ chrome.notifications.onButtonClicked.addListener(async (notificationId, btnIdx) 
     const downloadId = parseInt(notificationId.substr(17), 10);
     await clearRetries(downloadId);
     resumeDownload(downloadId);
-  } else if (notificationId == "dar-notification" && btnIdx == 0) {
+  } else if (notificationId == "dar-notification" && btnIdx == 0 /* Yes button */) {
     await startDownloads();
   }
 });
@@ -317,16 +319,17 @@ async function init() {
     }
     const otherDls = dls.filter(canResumeDownload);
     if (otherDls.length) {
-      let message = `Do you want to resume ${otherDls.length} failed Download`;
-      if (otherDls.length > 1) {
-        message += "s";
-      }
-      message += "?";
       await notifyUser("dar-notification", {
         requireInteraction: true,
-        message,
-        title: "Resume Downloads",
-        buttons: [{title: "Yes"}, {title: "No"}]
+        message: otherDls.length > 1
+          ? chrome.i18n.getMessage("resume_downloads", [otherDls.length])
+          : chrome.i18n.getMessage("resume_download"),
+        title: chrome.i18n.getMessage("resume_downloads_title"),
+        buttons: [{
+          title: chrome.i18n.getMessage("yes")
+        }, {
+          title: chrome.i18n.getMessage("no")
+        }]
       });
     }
   }
@@ -339,12 +342,12 @@ function setTitleAndBadge(count) {
   } = chrome.action;
   const promises = [];
   if (count) {
-    let title = `Watching ${count} Download`;
-    if (count > 1) {
-      title += "s";
-    }
     promises.push(
-      setTitle({title}),
+      setTitle({
+        title: count > 1
+          ? chrome.i18n.getMessage("watching_downloads", [count])
+          : chrome.i18n.getMessage("watching_download")
+      }),
       setBadge({text: String(count)})
     );
   } else {

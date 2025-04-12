@@ -1,0 +1,50 @@
+{
+  "resume_download": {
+    "message": "Do you want to resume 1 failed Download?"
+  },
+  "resume_downloads": {
+    "message": "Do you want to resume $count$ failed Downloads?",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "watching_download": {
+    "message": "Watching 1 Download"
+  },
+  "watching_downloads": {
+    "message": "Watching $count$ Downloads",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "yes": {
+    "message": "Yes"
+  },
+  "no": {
+    "message": "No"
+  },
+  "resume_downloads_title": {
+    "message": "Resume Downloads"
+  },
+  "resume_download_title": {
+    "message": "Resume Download"
+  },
+  "download_failed_title": {
+    "message": "Download failed"
+  },
+  "download_failed": {
+    "message": "Failed to resume download after $count$ attempts.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  }
+}

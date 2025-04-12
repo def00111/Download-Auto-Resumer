@@ -1,0 +1,50 @@
+{
+  "resume_download": {
+    "message": "M\u00f6chten Sie einen fehlgeschlagenen Download fortsetzen?"
+  },
+  "resume_downloads": {
+    "message": "M\u00f6chten Sie $count$ fehlgeschlagene Downloads wieder aufnehmen?",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "watching_download": {
+    "message": "1 Download wird beobachtet"
+  },
+  "watching_downloads": {
+    "message": "$count$ Downloads werden beobachtet",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "yes": {
+    "message": "Ja"
+  },
+  "no": {
+    "message": "Nein"
+  },
+  "resume_downloads_title": {
+    "message": "Downloads fortsetzen"
+  },
+  "resume_download_title": {
+    "message": "Download fortsetzen"
+  },
+  "download_failed_title": {
+    "message": "Download fehlgeschlagen"
+  },
+  "download_failed": {
+    "message": "Download konnte nicht fortgesetzt werden nach $count$ versuchen.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  }
+}
