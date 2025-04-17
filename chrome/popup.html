@@ -11,27 +11,27 @@
 <body>
   <form id="optionsForm">
     <fieldset>
-      <legend>Download Auto Resumer options</legend>
+      <legend translate="title"></legend>
       <div>
-        <label for="maxRetries">Max retries (0 to disable):</label>
+        <label for="maxRetries" translate="max_retries"></label>
         <input type="number" id="maxRetries" min="0" max="99">
       </div>
       <div>
-        <label for="time">Resume a failed download after</label>
+        <label for="time" translate="time_label1"></label>
         <input type="number" id="time" min="5" max="90">
-        <label for="time">seconds</label>
+        <label for="time" translate="time_label2"></label>
       </div>
       <div class="hline"></div>
       <div>
         <input type="checkbox" id="notifyWhenFailed">
-        <label for="notifyWhenFailed">Notify when a download failed to resume after x attempts.</label>
+        <label for="notifyWhenFailed" translate="notify_when_failed"></label>
       </div>
       <div>
         <input type="checkbox" id="debug">
-        <label for="debug">Show debug messages in the add-on console</label>
+        <label for="debug" translate="debug"></label>
       </div>
       <div>
-        <input id="saveButton" type="submit" value="Save" disabled>
+        <input id="saveButton" type="submit" disabled>
         <span class="hidden" id="saveHint">&#10004;</span>
       </div>
     </fieldset>

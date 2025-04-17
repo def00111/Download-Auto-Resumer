@@ -1,9 +1,9 @@
 {
   "resume_download": {
-    "message": "M\u00f6chten Sie einen fehlgeschlagenen Download fortsetzen?"
+    "message": "Möchten Sie einen fehlgeschlagenen Download fortsetzen?"
   },
   "resume_downloads": {
-    "message": "M\u00f6chten Sie $count$ fehlgeschlagene Downloads wieder aufnehmen?",
+    "message": "Möchten Sie $count$ fehlgeschlagene Downloads wieder aufnehmen?",
     "placeholders": {
       "count": {
         "content": "$1",
@@ -38,7 +38,10 @@
   "download_failed_title": {
     "message": "Download fehlgeschlagen"
   },
-  "download_failed": {
+  "download_failed1": {
+    "message": "Download konnte nicht fortgesetzt werden."
+  },
+  "download_failed2": {
     "message": "Download konnte nicht fortgesetzt werden nach $count$ versuchen.",
     "placeholders": {
       "count": {
@@ -46,5 +49,29 @@
         "example": "5"
       }
     }
+  },
+  "title": {
+    "message": "Download Auto Resumer Einstellungen"
+  },
+  "max_retries": {
+    "message": "Maximale Wiederholungsversuche (0 zum deaktivieren):"
+  },
+  "time_label1": {
+    "message": "Einen fehlgeschlagenen Download fortsetzen nach"
+  },
+  "time_label2": {
+    "message": "sekunden"
+  },
+  "notify_when_failed": {
+    "message": "Benachrichtigen, wenn ein Download nach x Versuchen nicht fortgesetzt werden konnte."
+  },
+  "debug": {
+    "message": "Debug-Meldungen in der Add-On-Konsole anzeigen"
+  },
+  "save": {
+    "message": "Speichern"
+  },
+  "appDesc": {
+    "message": "Automatisch unterbrochene Downloads wieder aufnehmen"
   }
 }

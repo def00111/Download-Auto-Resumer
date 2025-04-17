@@ -38,7 +38,10 @@
   "download_failed_title": {
     "message": "Download failed"
   },
-  "download_failed": {
+  "download_failed1": {
+    "message": "Download could not be resumed."
+  },
+  "download_failed2": {
     "message": "Failed to resume download after $count$ attempts.",
     "placeholders": {
       "count": {
@@ -46,5 +49,29 @@
         "example": "5"
       }
     }
+  },
+  "title": {
+    "message": "Download Auto Resumer options"
+  },
+  "max_retries": {
+    "message": "Max retries (0 to disable):"
+  },
+  "time_label1": {
+    "message": "Resume a failed download after"
+  },
+  "time_label2": {
+    "message": "seconds"
+  },
+  "notify_when_failed": {
+    "message": "Notify when a download failed to resume after x attempts."
+  },
+  "debug": {
+    "message": "Show debug messages in the add-on console"
+  },
+  "save": {
+    "message": "Save"
+  },
+  "appDesc": {
+    "message": "Automatically resume interrupted downloads"
   }
 }

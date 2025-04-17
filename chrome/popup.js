@@ -11,6 +11,13 @@ function onError(error) {
   console.error(error);
 }
 
+for (const el of document.querySelectorAll("[translate]")) {
+  const key = el.getAttribute("translate");
+  const label = chrome.i18n.getMessage(key);
+  el.textContent = label;
+}
+$("saveButton").value = chrome.i18n.getMessage("save");
+
 chrome.storage.sync.get({
   debug: false,
   time: 30 /* seconds */,
