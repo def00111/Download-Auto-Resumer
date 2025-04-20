@@ -3,7 +3,7 @@
     "message": "Do you want to resume 1 failed Download?"
   },
   "resume_downloads": {
-    "message": "Do you want to resume $count$ failed Downloads?",
+    "message": "Do you want to resume $COUNT$ failed Downloads?",
     "placeholders": {
       "count": {
         "content": "$1",
@@ -15,7 +15,7 @@
     "message": "Watching 1 Download"
   },
   "watching_downloads": {
-    "message": "Watching $count$ Downloads",
+    "message": "Watching $COUNT$ Downloads",
     "placeholders": {
       "count": {
         "content": "$1",
@@ -42,7 +42,7 @@
     "message": "Download could not be resumed."
   },
   "download_failed2": {
-    "message": "Failed to resume download after $count$ attempts.",
+    "message": "Failed to resume download after $COUNT$ attempts.",
     "placeholders": {
       "count": {
         "content": "$1",
@@ -56,10 +56,10 @@
   "max_retries": {
     "message": "Max retries (0 to disable):"
   },
-  "time_label1": {
+  "time_label": {
     "message": "Resume a failed download after"
   },
-  "time_label2": {
+  "time_label_sec": {
     "message": "seconds"
   },
   "notify_when_failed": {

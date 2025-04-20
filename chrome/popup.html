@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <title>Download Auto Resumer</title>
+  <title data-i18n="title"></title>
   <link rel="stylesheet" href="popup.css" type="text/css">
   <script defer src="popup.js"></script>
 </head>
@@ -11,24 +11,24 @@
 <body>
   <form id="optionsForm">
     <fieldset>
-      <legend translate="title"></legend>
+      <legend data-i18n="title"></legend>
       <div>
-        <label for="maxRetries" translate="max_retries"></label>
+        <label for="maxRetries" data-i18n="max_retries"></label>
         <input type="number" id="maxRetries" min="0" max="99">
       </div>
       <div>
-        <label for="time" translate="time_label1"></label>
+        <label for="time" data-i18n="time_label"></label>
         <input type="number" id="time" min="5" max="90">
-        <label for="time" translate="time_label2"></label>
+        <label for="time" data-i18n="time_label_sec"></label>
       </div>
       <div class="hline"></div>
       <div>
         <input type="checkbox" id="notifyWhenFailed">
-        <label for="notifyWhenFailed" translate="notify_when_failed"></label>
+        <label for="notifyWhenFailed" data-i18n="notify_when_failed"></label>
       </div>
       <div>
         <input type="checkbox" id="debug">
-        <label for="debug" translate="debug"></label>
+        <label for="debug" data-i18n="debug"></label>
       </div>
       <div>
         <input id="saveButton" type="submit" disabled>

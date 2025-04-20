@@ -3,7 +3,7 @@
     "message": "Möchten Sie einen fehlgeschlagenen Download fortsetzen?"
   },
   "resume_downloads": {
-    "message": "Möchten Sie $count$ fehlgeschlagene Downloads wieder aufnehmen?",
+    "message": "Möchten Sie $COUNT$ fehlgeschlagene Downloads wieder aufnehmen?",
     "placeholders": {
       "count": {
         "content": "$1",
@@ -15,7 +15,7 @@
     "message": "1 Download wird beobachtet"
   },
   "watching_downloads": {
-    "message": "$count$ Downloads werden beobachtet",
+    "message": "$COUNT$ Downloads werden beobachtet",
     "placeholders": {
       "count": {
         "content": "$1",
@@ -42,7 +42,7 @@
     "message": "Download konnte nicht fortgesetzt werden."
   },
   "download_failed2": {
-    "message": "Download konnte nicht fortgesetzt werden nach $count$ versuchen.",
+    "message": "Download konnte nicht fortgesetzt werden nach $COUNT$ versuchen.",
     "placeholders": {
       "count": {
         "content": "$1",
@@ -56,10 +56,10 @@
   "max_retries": {
     "message": "Maximale Wiederholungsversuche (0 zum deaktivieren):"
   },
-  "time_label1": {
+  "time_label": {
     "message": "Einen fehlgeschlagenen Download fortsetzen nach"
   },
-  "time_label2": {
+  "time_label_sec": {
     "message": "sekunden"
   },
   "notify_when_failed": {
