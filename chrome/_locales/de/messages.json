@@ -65,6 +65,9 @@
   "notify_when_failed": {
     "message": "Benachrichtigen, wenn ein Download nach x Versuchen nicht fortgesetzt werden konnte."
   },
+  "resume_on_online": {
+    "message": "Downloads wieder aufnehmen nachdem mit einem Netzwerk verbunden wurde."
+  },
   "debug": {
     "message": "Debug-Meldungen in der Add-On-Konsole anzeigen"
   },

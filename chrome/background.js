@@ -8,7 +8,8 @@ const prefs = {
   debug: false,
   time: 30 /* seconds */,
   maxRetries: 10,
-  notifyWhenFailed: false
+  notifyWhenFailed: false,
+  resumeOnOnline: false
 };
 
 Object.defineProperty(this, "initOptions", {
@@ -413,11 +414,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.online == true) {
-    startDownloads();
+    initOptions().then(async () => {
+      if (prefs.resumeOnOnline) {
+        await startDownloads();
+      }
+      sendResponse({});
+    });
   } else if (message.offline == true) {
-    chrome.alarms.clearAll();
+    chrome.alarms.clearAll().then(() => sendResponse({}));
   }
-  return sendResponse({});
+  return true;
 });
 
 // So the add-on starts correctly

@@ -65,6 +65,9 @@
   "notify_when_failed": {
     "message": "Notify when a download failed to resume after x attempts."
   },
+  "resume_on_online": {
+    "message": "Resume downloads after connected to a network."
+  },
   "debug": {
     "message": "Show debug messages in the add-on console"
   },

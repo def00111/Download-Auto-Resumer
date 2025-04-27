@@ -21,13 +21,17 @@ chrome.storage.sync.get({
   debug: false,
   time: 30 /* seconds */,
   maxRetries: 10,
-  notifyWhenFailed: false
+  notifyWhenFailed: false,
+  resumeOnOnline: false
 }).then(prefs => {
   if (prefs.debug) {
     $("debug").checked = true;
   }
   if (prefs.notifyWhenFailed) {
     $("notifyWhenFailed").checked = true;
+  }
+  if (prefs.resumeOnOnline) {
+    $("resumeOnOnline").checked = true;
   }
   $("maxRetries").valueAsNumber = prefs.maxRetries;
   $("time").valueAsNumber = prefs.time;
@@ -47,7 +51,8 @@ $("optionsForm").addEventListener("submit", evt => {
     debug: $("debug").checked,
     time: $("time").valueAsNumber,
     maxRetries: $("maxRetries").valueAsNumber,
-    notifyWhenFailed: $("notifyWhenFailed").checked
+    notifyWhenFailed: $("notifyWhenFailed").checked,
+    resumeOnOnline: $("resumeOnOnline").checked
   })
   .then(() => {
     saveHint.classList.remove("hidden");
