@@ -74,7 +74,7 @@ chrome.downloads.onCreated.addListener(async dl => {
     return;
   }
   if (!(await isEnabled())) {
-    await toggle(true);
+    await toggleOffscreenDocument(true);
     toggleKeepAwake(true);
   }
   const dls = await searchDownloads();
@@ -83,10 +83,10 @@ chrome.downloads.onCreated.addListener(async dl => {
 
 chrome.downloads.onErased.addListener(async downloadId => {
   const dls = await searchDownloads();
-  if (!hasDownloads(dls)) {
-    await toggle(false);
-  }
   const inProgessCount = getInProgressCount(dls);
+  if (!inProgessCount && !dls.some(canResumeDownload)) {
+    await toggleOffscreenDocument(false);
+  }
   if (!inProgessCount) {
     toggleKeepAwake(false);
   }
@@ -106,10 +106,8 @@ async function startDownloads() {
     return;
   }
   const dls = await searchDownloads();
-  for (let i = dls.length - 1; i >= 0; i--) {
-    if (canResumeDownload(dls[i])) {
-      resumeDownload(dls[i].id);
-    }
+  for (const dl of dls.filter(canResumeDownload)) {
+    resumeDownload(dl.id);
   }
 }
 
@@ -140,15 +138,6 @@ function getInProgressCount(dls) {
   return inProgessCount;
 }
 
-function hasDownloads(dls) {
-  for (let i = dls.length - 1; i >= 0; i--) {
-    if (checkDownload(dls[i])) {
-      return true;
-    }
-  }
-  return false;
-}
-
 chrome.downloads.onChanged.addListener(async delta => {
   if (delta.state?.current !== undefined) {
     const dls = await searchDownloads();
@@ -163,14 +152,14 @@ chrome.downloads.onChanged.addListener(async delta => {
           });
         }
         if (!(await isEnabled())) {
-          await toggle(true);
+          await toggleOffscreenDocument(true);
           toggleKeepAwake(true);
         }
         break;
       case "complete":
       case "interrupted":
-        if (!hasDownloads(dls)) {
-          await toggle(false);
+        if (!inProgessCount && !dls.some(canResumeDownload)) {
+          await toggleOffscreenDocument(false);
         }
         if (!inProgessCount) {
           toggleKeepAwake(false);
@@ -310,7 +299,7 @@ async function init() {
     await chrome.storage.session.set({
       startedAfter: new Date(startTime).toISOString()
     });
-    await toggle(true);
+    await toggleOffscreenDocument(true);
     const inProgessDls = dls.filter(dl => dl.state == "in_progress");
     if (inProgessDls.length) {
       await setTitleAndBadge(inProgessDls.length);
@@ -360,11 +349,6 @@ function setTitleAndBadge(count) {
   return Promise.all(promises);
 }
 
-async function toggle(enabled) {
-  await toggleOffscreenDocument(enabled);
-  return chrome.storage.session.set({enabled});
-}
-
 function toggleKeepAwake(enabled) {
   if (enabled) {
     chrome.power.requestKeepAwake("system");
@@ -387,7 +371,7 @@ async function toggleOffscreenDocument(enabled) {
     if (!enabled) {
       await chrome.offscreen.closeDocument();
     }
-    return;
+    return chrome.storage.session.set({enabled});
   }
 
   if (enabled) {
@@ -406,6 +390,7 @@ async function toggleOffscreenDocument(enabled) {
       }
     } catch (ex) {}
   }
+  return chrome.storage.session.set({enabled});
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
