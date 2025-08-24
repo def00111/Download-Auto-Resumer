@@ -112,9 +112,9 @@ async function startDownloads() {
 }
 
 async function searchDownloads() {
-  const lastDayDate = new Date(Date.now() - 24 * 36e5); // limit downloads to the last 24 hours
+  const last24Hours = new Date(Date.now() - 24 * 36e5); // limit downloads to the last 24 hours
   const res = await chrome.storage.session.get({
-    startedAfter: lastDayDate.toISOString()
+    startedAfter: last24Hours.toISOString()
   });
 
   const query = Object.assign({
