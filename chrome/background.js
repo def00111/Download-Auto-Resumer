@@ -9,7 +9,7 @@ const prefs = {
   time: 30 /* seconds */,
   maxRetries: 10,
   notifyWhenFailed: false,
-  resumeOnOnline: false
+  resumeOnOnline: false,
 };
 
 Object.defineProperty(this, "initOptions", {
@@ -17,6 +17,21 @@ Object.defineProperty(this, "initOptions", {
     return chrome.storage.sync.get().then(items => {
       Object.assign(prefs, items);
       Object.defineProperty(this, "initOptions", {
+        value: Promise.resolve.bind(Promise),
+      });
+    });
+  },
+  enumerable: true,
+  configurable: true,
+});
+
+Object.defineProperty(this, "initRetryCounts", {
+  value: () => {
+    return chrome.storage.session.get({
+      retryCounts: [],
+    }).then(res => {
+      retryCounts = new Map(res.retryCounts);
+      Object.defineProperty(this, "initRetryCounts", {
         value: Promise.resolve.bind(Promise),
       });
     });
@@ -39,22 +54,14 @@ function isEnabled() {
 }
 
 async function clearRetries(downloadId) {
-  if (retryCounts === undefined) {
-    retryCounts = await getRetryCounts();
-  }
+  await initRetryCounts();
   if (retryCounts.has(downloadId)) {
     retryCounts.delete(downloadId);
-    await setRetryCounts();
+    await saveRetryCounts();
   }
 }
 
-function getRetryCounts() {
-  return chrome.storage.session.get({
-    retryCounts: []
-  }).then(res => new Map(res.retryCounts));
-}
-
-function setRetryCounts() {
+function saveRetryCounts() {
   return chrome.storage.session.set({
     retryCounts: Array.from(retryCounts)
   });
@@ -112,9 +119,9 @@ async function startDownloads() {
 }
 
 async function searchDownloads() {
-  const last24Hours = new Date(Date.now() - 24 * 36e5); // limit downloads to the last 24 hours
+  const date = new Date(Date.now() - 24 * 36e5); // limit downloads to the last 24 hours
   const res = await chrome.storage.session.get({
-    startedAfter: last24Hours.toISOString()
+    startedAfter: date.toISOString()
   });
 
   const query = Object.assign({
@@ -122,10 +129,6 @@ async function searchDownloads() {
   }, res);
 
   return chrome.downloads.search(query);
-}
-
-function checkDownload(dl) {
-  return dl.state == "in_progress" || canResumeDownload(dl);
 }
 
 function getInProgressCount(dls) {
@@ -213,18 +216,12 @@ async function handleInterruptedDownload(downloadId) {
 
   await initOptions();
   if (!prefs.maxRetries) {
-    await chrome.alarms.create(`dar-alarm-${downloadId}`, {
-      delayInMinutes: prefs.time / 60
-    });
+    await createAlarm(`dar-alarm-${downloadId}`);
   } else {
-    if (retryCounts === undefined) {
-      retryCounts = await getRetryCounts();
-    }
+    await initRetryCounts();
     let retryCount = retryCounts.get(downloadId) ?? 0;
     if (retryCount < prefs.maxRetries) {
-      await chrome.alarms.create(`dar-alarm-${downloadId}`, {
-        delayInMinutes: prefs.time / 60
-      });
+      await createAlarm(`dar-alarm-${downloadId}`);
     } else if ((retryCount == prefs.maxRetries) &&
                 prefs.notifyWhenFailed) {
       await notifyUser(`dar-notification-${downloadId}`, {
@@ -239,7 +236,7 @@ async function handleInterruptedDownload(downloadId) {
     }
     if (retryCount <= prefs.maxRetries) {
       retryCounts.set(downloadId, retryCount++);
-      await setRetryCounts();
+      await saveRetryCounts();
     }
   }
 }
@@ -254,6 +251,12 @@ async function resumeDownload(downloadId) {
       console.error("Failed to resume download %i: %s", downloadId, error.message);
     });
   }
+}
+
+function createAlarm(name) {
+  return chrome.alarms.create(name, {
+    delayInMinutes: prefs.time / 60
+  });
 }
 
 function notifyUser(notificationId, options) {
@@ -288,11 +291,26 @@ async function init() {
     initialized: true
   });
 
+  let inProgessCount = 0;
+  let otherCount = 0;
   let dls = await chrome.downloads.search({
     orderBy: ["-startTime"],
     limit: 0
   });
-  dls = dls.filter(checkDownload);
+  dls = dls.filter(dl => {
+    if (dl.state == "in_progress" || canResumeDownload(dl)) {
+      switch (true) {
+        case dl.state == "in_progress":
+          inProgessCount++;
+          break;
+        case canResumeDownload(dl):
+          otherCount++;
+          break;
+      }
+      return true;
+    }
+    return false;
+  });
   if (dls.length) {
     const lastDownload = dls[dls.length - 1];
     const startTime = Date.parse(lastDownload.startTime) - 1;
@@ -300,20 +318,18 @@ async function init() {
       startedAfter: new Date(startTime).toISOString()
     });
     await toggleOffscreenDocument(true);
-    const inProgessDls = dls.filter(dl => dl.state == "in_progress");
-    if (inProgessDls.length) {
-      await setTitleAndBadge(inProgessDls.length);
+    if (inProgessCount) {
+      await setTitleAndBadge(inProgessCount);
       toggleKeepAwake(true);
     }
-    const otherDls = dls.filter(canResumeDownload);
-    if (otherDls.length) {
+    if (otherCount) {
       await notifyUser("dar-notification", {
         requireInteraction: true,
-        message: otherDls.length > 1
-          ? chrome.i18n.getMessage("resume_downloads", [otherDls.length])
+        message: otherCount > 1
+          ? chrome.i18n.getMessage("resume_downloads", [otherCount])
           : chrome.i18n.getMessage("resume_download"),
         title: chrome.i18n.getMessage(
-          otherDls.length > 1 ? "resume_downloads_title" : "resume_download_title"
+          otherCount > 1 ? "resume_downloads_title" : "resume_download_title"
         ),
         buttons: [{
           title: chrome.i18n.getMessage("yes")
