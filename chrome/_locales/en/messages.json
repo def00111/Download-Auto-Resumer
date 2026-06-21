@@ -3,25 +3,13 @@
     "message": "Do you want to resume 1 failed Download?"
   },
   "resume_downloads": {
-    "message": "Do you want to resume $COUNT$ failed Downloads?",
-    "placeholders": {
-      "count": {
-        "content": "$1",
-        "example": "5"
-      }
-    }
+    "message": "Do you want to resume $1 failed Downloads?"
   },
   "watching_download": {
     "message": "Watching 1 Download"
   },
   "watching_downloads": {
-    "message": "Watching $COUNT$ Downloads",
-    "placeholders": {
-      "count": {
-        "content": "$1",
-        "example": "5"
-      }
-    }
+    "message": "Watching $1 Downloads"
   },
   "yes": {
     "message": "Yes"
@@ -38,17 +26,11 @@
   "download_failed_title": {
     "message": "Download failed"
   },
-  "download_failed1": {
+  "download_failed": {
     "message": "Download could not be resumed."
   },
-  "download_failed2": {
-    "message": "Failed to resume download after $COUNT$ attempts.",
-    "placeholders": {
-      "count": {
-        "content": "$1",
-        "example": "5"
-      }
-    }
+  "download_failed_multiple": {
+    "message": "Failed to resume download after $1 attempts."
   },
   "title": {
     "message": "Download Auto Resumer options"

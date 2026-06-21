@@ -3,25 +3,13 @@
     "message": "Möchten Sie einen fehlgeschlagenen Download fortsetzen?"
   },
   "resume_downloads": {
-    "message": "Möchten Sie $COUNT$ fehlgeschlagene Downloads wieder aufnehmen?",
-    "placeholders": {
-      "count": {
-        "content": "$1",
-        "example": "5"
-      }
-    }
+    "message": "Möchten Sie $1 fehlgeschlagene Downloads wieder aufnehmen?"
   },
   "watching_download": {
     "message": "1 Download wird beobachtet"
   },
   "watching_downloads": {
-    "message": "$COUNT$ Downloads werden beobachtet",
-    "placeholders": {
-      "count": {
-        "content": "$1",
-        "example": "5"
-      }
-    }
+    "message": "$1 Downloads werden beobachtet"
   },
   "yes": {
     "message": "Ja"
@@ -38,17 +26,11 @@
   "download_failed_title": {
     "message": "Download fehlgeschlagen"
   },
-  "download_failed1": {
+  "download_failed": {
     "message": "Download konnte nicht fortgesetzt werden."
   },
-  "download_failed2": {
-    "message": "Download konnte nicht fortgesetzt werden nach $COUNT$ versuchen.",
-    "placeholders": {
-      "count": {
-        "content": "$1",
-        "example": "5"
-      }
-    }
+  "download_failed_multiple": {
+    "message": "Download konnte nicht fortgesetzt werden nach $1 versuchen."
   },
   "title": {
     "message": "Download Auto Resumer Einstellungen"
