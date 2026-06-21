@@ -77,24 +77,25 @@ chrome.alarms.onAlarm.addListener(alarm => {
 });
 
 chrome.downloads.onCreated.addListener(async dl => {
-  if (dl.state != "in_progress") {
+  if (dl.state !== "in_progress") {
     return;
   }
-  if (!(await isEnabled())) {
+  const dls = await searchDownloads();
+  const inProgessCount = getInProgressCount(dls);
+  if (inProgessCount && !(await isEnabled())) {
     await toggleOffscreenDocument(true);
     toggleKeepAwake(true);
   }
-  const dls = await searchDownloads();
-  await setTitleAndBadge(getInProgressCount(dls)); // update title and badge
+  await setTitleAndBadge(inProgessCount); // update title and badge
 });
 
 chrome.downloads.onErased.addListener(async downloadId => {
   const dls = await searchDownloads();
   const inProgessCount = getInProgressCount(dls);
-  if (!inProgessCount && !dls.some(canResumeDownload)) {
-    await toggleOffscreenDocument(false);
-  }
   if (!inProgessCount) {
+    if (!dls.some(canResumeDownload)) {
+      await toggleOffscreenDocument(false);
+    }
     toggleKeepAwake(false);
   }
   await setTitleAndBadge(inProgessCount); // update title and badge
@@ -102,7 +103,7 @@ chrome.downloads.onErased.addListener(async downloadId => {
 });
 
 function canResumeDownload(dl) {
-  if (dl.state != "interrupted") {
+  if (dl.state !== "interrupted") {
     return false;
   }
   return dl.canResume;
@@ -134,7 +135,7 @@ async function searchDownloads() {
 function getInProgressCount(dls) {
   let inProgessCount = 0;
   for (let i = dls.length - 1; i >= 0; i--) {
-    if (dls[i].state == "in_progress") {
+    if (dls[i].state === "in_progress") {
       inProgessCount++;
     }
   }
@@ -142,16 +143,19 @@ function getInProgressCount(dls) {
 }
 
 chrome.downloads.onChanged.addListener(async delta => {
-  if (delta.state?.current !== undefined) {
+  const state = delta.state?.current;
+  const canResume = delta.canResume?.current;
+  if (typeof state === "string") {
     const dls = await searchDownloads();
     const inProgessCount = getInProgressCount(dls);
-    switch (delta.state.current) {
+    switch (state) {
       case "in_progress":
         if (downloads.has(delta.id)) {
           // Pausing a download causes the "auto_resume_count_" flag to reset when the download is resumed. 
           // https://source.chromium.org/chromium/chromium/src/+/main:components/download/public/common/download_item_impl.h;l=844-847;drc=5f81609f7c343a17175b71d07ae02d6f5d09675f;bpv=0;bpt=1
-          chrome.downloads.pause(delta.id).then(() => {
-            debug("Paused download %i", delta.id);
+          chrome.downloads.pause(delta.id).then(async () => {
+            const [dl] = await chrome.downloads.search({id: delta.id});
+            debug("Paused download %s", dl.filename);
           });
         }
         if (!(await isEnabled())) {
@@ -161,13 +165,13 @@ chrome.downloads.onChanged.addListener(async delta => {
         break;
       case "complete":
       case "interrupted":
-        if (!inProgessCount && !dls.some(canResumeDownload)) {
-          await toggleOffscreenDocument(false);
-        }
         if (!inProgessCount) {
+          if (!dls.some(canResumeDownload)) {
+            await toggleOffscreenDocument(false);
+          }
           toggleKeepAwake(false);
         }
-        if (delta.canResume?.current == true) {
+        if (canResume) {
           handleInterruptedDownload(delta.id);
         } else {
           await clearRetries(delta.id);
@@ -175,10 +179,10 @@ chrome.downloads.onChanged.addListener(async delta => {
         break;
     }
     await setTitleAndBadge(inProgessCount); // update title and badge
-  } else if ((delta.canResume?.current == true) &&
-             downloads.has(delta.id)) {
-    chrome.downloads.resume(delta.id).then(() => {
-      debug("Resumed download after it was paused %i", delta.id);
+  } else if (canResume && downloads.has(delta.id)) {
+    chrome.downloads.resume(delta.id).then(async () => {
+      const [dl] = await chrome.downloads.search({id: delta.id});
+      debug("Resumed download after it was paused %s", dl.filename);
       downloads.delete(delta.id);
     });
   }
@@ -222,12 +226,12 @@ async function handleInterruptedDownload(downloadId) {
     let retryCount = retryCounts.get(downloadId) ?? 0;
     if (retryCount < prefs.maxRetries) {
       await createAlarm(`dar-alarm-${downloadId}`);
-    } else if ((retryCount == prefs.maxRetries) &&
+    } else if ((retryCount === prefs.maxRetries) &&
                 prefs.notifyWhenFailed) {
       await notifyUser(`dar-notification-${downloadId}`, {
         message: prefs.maxRetries > 1
-          ? chrome.i18n.getMessage("download_failed2", [prefs.maxRetries])
-          : chrome.i18n.getMessage("download_failed1"),
+          ? chrome.i18n.getMessage("download_failed_multiple", [prefs.maxRetries])
+          : chrome.i18n.getMessage("download_failed"),
         title: chrome.i18n.getMessage("download_failed_title"),
         buttons: [{
           title: chrome.i18n.getMessage("resume_download_title")
@@ -242,13 +246,13 @@ async function handleInterruptedDownload(downloadId) {
 }
 
 async function resumeDownload(downloadId) {
-  let [dl] = await chrome.downloads.search({id: downloadId});
+  const [dl] = await chrome.downloads.search({id: downloadId});
   if (dl && canResumeDownload(dl)) {
     chrome.downloads.resume(downloadId).then(() => {
-      debug("Resumed download %i", downloadId);
+      debug("Resumed download %s", dl.filename);
       downloads.add(downloadId);
     }).catch(error => {
-      console.error("Failed to resume download %i: %s", downloadId, error.message);
+      console.error("Failed to resume download %s: %s", dl.filename, error.message);
     });
   }
 }
@@ -273,8 +277,8 @@ chrome.notifications.onButtonClicked.addListener(async (notificationId, btnIdx) 
     await clearRetries(downloadId);
     resumeDownload(downloadId);
   } else if (
-    notificationId == "dar-notification" &&
-    btnIdx == 0 /* Yes button */
+    notificationId === "dar-notification" &&
+    btnIdx === 0 /* Yes button */
   ) {
     await startDownloads();
   }
@@ -293,22 +297,20 @@ async function init() {
 
   let inProgessCount = 0;
   let otherCount = 0;
-  let dls = await chrome.downloads.search({
+  const dls = (await chrome.downloads.search({
     orderBy: ["-startTime"],
     limit: 0
-  });
-  dls = dls.filter(dl => {
-    if (dl.state == "in_progress" || canResumeDownload(dl)) {
-      switch (true) {
-        case dl.state == "in_progress":
-          inProgessCount++;
-          break;
-        case canResumeDownload(dl):
-          otherCount++;
-          break;
-      }
+  })).filter(dl => {
+    if (dl.state === "in_progress") {
+      inProgessCount++;
       return true;
     }
+
+    if (canResumeDownload(dl)) {
+      otherCount++;
+      return true;
+    }
+
     return false;
   });
   if (dls.length) {
@@ -346,23 +348,19 @@ function setTitleAndBadge(count) {
     setBadgeText: setBadge,
     setTitle
   } = chrome.action;
-  const promises = [];
+  let promise1, promise2;
   if (count) {
-    promises.push(
-      setTitle({
-        title: count > 1
-          ? chrome.i18n.getMessage("watching_downloads", [count])
-          : chrome.i18n.getMessage("watching_download")
-      }),
-      setBadge({text: String(count)})
-    );
+    promise1 = setTitle({
+      title: count > 1
+        ? chrome.i18n.getMessage("watching_downloads", [count])
+        : chrome.i18n.getMessage("watching_download")
+    });
+    promise2 = setBadge({text: String(count)});
   } else {
-    promises.push(
-      setTitle({title: ""}),
-      setBadge({text: ""})
-    );
+    promise1 = setTitle({title: ""});
+    promise2 = setBadge({text: ""});
   }
-  return Promise.all(promises);
+  return Promise.all([promise1, promise2]);
 }
 
 function toggleKeepAwake(enabled) {
@@ -387,10 +385,7 @@ async function toggleOffscreenDocument(enabled) {
     if (!enabled) {
       await chrome.offscreen.closeDocument();
     }
-    return chrome.storage.session.set({enabled});
-  }
-
-  if (enabled) {
+  } else if (enabled) {
     try {
       if (creating) {
         await creating;
@@ -398,36 +393,37 @@ async function toggleOffscreenDocument(enabled) {
         // Workaround for bug: https://issues.chromium.org/issues/40155587
         creating = chrome.offscreen.createDocument({
           url: offscreenUrl,
-          reasons: ['WORKERS'],
-          justification: 'Watch for online/offline events',
+          reasons: ['WORKERS'], // reasons should be EVENT_LISTENER or something
+          justification: 'Resume interrupted downloads when connectivity is restored',
         });
         await creating;
         creating = null;
       }
-    } catch (ex) {}
+    } catch {}
   }
   return chrome.storage.session.set({enabled});
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (sender.id != chrome.runtime.id) {
+  if (sender.id !== chrome.runtime.id) {
     return sendResponse({});
   }
 
-  if (message.online == true) {
+  if (message.online) {
     initOptions().then(async () => {
       if (prefs.resumeOnOnline) {
         await startDownloads();
       }
       sendResponse({});
     });
-  } else if (message.offline == true) {
+  } else if (message.offline) {
     chrome.alarms.clearAll().then(() => sendResponse({}));
   }
   return true;
 });
 
-// So the add-on starts correctly
+// Register startup/install handlers so the service worker is initialized
+// when the browser starts or the extension is installed.
 chrome.runtime.onStartup.addListener(() => {});
 chrome.runtime.onInstalled.addListener(() => {});
 
